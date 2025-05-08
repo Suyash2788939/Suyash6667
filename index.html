@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flashcards Editor</title>
+  <!-- Add this in the <body> section or within <head> -->
+<audio id="save-sound" src="mixkit-positive-interface-beep-221.wav" preload="auto" volume="1"></audio>
+
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+
+  <style>
+    body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(to right, #f8eee7, #94618e1a);
+  margin: 0;
+  padding: 40px 20px;
+}
+
+h1 {
+  text-align: center;
+  color: #764778;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+}
+
+.container {
+  max-width: 1100px;
+  margin: auto;
+  background: #f8eee7;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.card-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.flashcard {
+  width: 300px;
+  perspective: 1000px;
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.card-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  background: #f8eee7;
+  border: 2px solid #94618E;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-front {
+  z-index: 2;
+}
+
+.card-back {
+  background: #f8eee7;
+  transform: rotateY(180deg);
+}
+
+textarea {
+  height: 320px;
+  resize: none;
+  border: 1px solid #a871aa;
+  background: #fff;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 8px;
+  color: #764778;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+button {
+  padding: 8px 14px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s;
+  color: #fff;
+}
+
+/* Custom Colored Buttons */
+.add-btn {
+  background: #a871aa;
+}
+
+.delete-btn {
+  background: #764778;
+}
+
+.flip-btn {
+  background: #a871aa;
+}
+
+.peek-btn {
+  background: #F8EEE7;
+  color: #764778;
+  border: 1px solid #a871aa;
+}
+
+.save-btn {
+  background: #a871aa;
+}
+
+/* Hidden checkboxes initially */
+.select-box {
+  display: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #764778;
+}
+
+/* Show when in delete mode */
+.show-checkbox .select-box {
+  display: inline-block;
+}
+.save-message {
+  color: #764778;
+  font-weight: bold;
+  font-size: 1rem;
+  padding: 5px;
+  background-color: #F8EEE7;
+  border-radius: 5px;
+  text-align: center;
+  display: none; /* Initially hidden */
+}
+
+.save-message.visible {
+  display: block; /* Make it visible when triggered */
+  animation: fadeOut 3s forwards;
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; display: none; }
+}
+
+.hidden {
+  display: none;
+}
+.rendered-content {
+  font-size: 16px;
+  line-height: 1.5;
+  color: #333;
+}
+
+
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="controls">
+      <h1>Flashcards Editor</h1>
+      <div>
+        <button class="add-btn" onclick="addFlashcard()">Add Flashcard</button>
+        <button class="delete-btn" onclick="deleteSelected()">Delete Selected</button>
+      </div>
+    </div>
+    <div id="cardList" class="card-list"></div>
+  </div>
+  
+  
+
+  <script>
+    let flashcards = JSON.parse(localStorage.getItem("flashcards")) || [];
+    let deleteMode = false;
+
+    function saveAllToStorage() {
+      localStorage.setItem("flashcards", JSON.stringify(flashcards));
+    }
+
+    function addFlashcard(fromStorage = false, storedData = {}) {
+  const cardList = document.getElementById("cardList");
+  const cardId = fromStorage ? storedData.id : Date.now();
+  const frontVal = fromStorage ? storedData.front : "";
+  const backVal = fromStorage ? storedData.back : "";
+
+  const card = document.createElement("div");
+  card.className = "flashcard";
+  card.dataset.id = cardId;
+
+  card.innerHTML = `
+    <div class="card-inner" id="inner-${cardId}">
+      <div class="card-face card-front">
+        <textarea id="front-${cardId}" placeholder="Front content...">${frontVal}</textarea>
+        <div class="save-message" id="save-msg-${cardId}">Card saved successfully!</div>
+        <div class="actions" id="actions-front-${cardId}">
+          <button class="flip-btn" onclick="flipCard(${cardId})">Flip</button>
+          <button class="peek-btn" id="peek-${cardId}" style="display:${frontVal && backVal ? 'inline-block' : 'none'}" onmousedown="peekCard(${cardId})" onmouseup="unpeekCard(${cardId})" onmouseleave="unpeekCard(${cardId})">Peek</button>
+          ${frontVal && backVal ? '' : `<button class="save-btn" id="save-front-${cardId}" onclick="saveCard(${cardId})">Save</button>`}
+          ${frontVal && backVal ? '' : `<button class="delete-btn" id="delete-${cardId}" onclick="deleteFlashcard(${cardId})">Delete</button>`}
+          <input type="checkbox" class="select-box" id="select-${cardId}"/>
+        </div>
+      </div>
+      <div class="card-face card-back">
+        <textarea id="back-${cardId}" placeholder="Back content...">${backVal}</textarea>
+        <div class="save-message" id="save-msg-back-${cardId}">Card saved successfully!</div>
+        <div class="actions" id="actions-back-${cardId}">
+          <button class="flip-btn" onclick="flipCard(${cardId})">Flip</button>
+          ${frontVal && backVal ? '' : `<button class="save-btn" id="save-back-${cardId}" onclick="saveCard(${cardId})">Save</button>`}
+        </div>
+      </div>
+    </div>
+  `;
+
+  cardList.prepend(card);
+
+  // Ensure that the message is hidden initially
+  const frontMsg = document.getElementById(`save-msg-${cardId}`);
+  const backMsg = document.getElementById(`save-msg-back-${cardId}`);
+  [frontMsg, backMsg].forEach(msg => msg.classList.add('hidden'));
+
+  if (!fromStorage) flashcards.unshift({ id: cardId, front: "", back: "" });
+
+  attachKeyboardShortcut(cardId);
+}
+
+
+    function deleteFlashcard(id) {
+      const card = document.querySelector(`[data-id='${id}']`);
+      if (card) {
+        card.remove();
+        flashcards = flashcards.filter(fc => fc.id !== id);
+        saveAllToStorage();
+      }
+    }
+
+    function deleteSelected() {
+      const cardList = document.getElementById("cardList");
+
+      if (!deleteMode) {
+        // Show checkboxes
+        cardList.classList.add("show-checkbox");
+        deleteMode = true;
+      } else {
+        // Delete selected
+        const checkboxes = document.querySelectorAll(".select-box:checked");
+        checkboxes.forEach(cb => {
+          const cardId = parseInt(cb.id.replace('select-', ''));
+          deleteFlashcard(cardId);
+        });
+
+        // Hide checkboxes
+        cardList.classList.remove("show-checkbox");
+        deleteMode = false;
+      }
+    }
+
+    function flipCard(id) {
+      const inner = document.getElementById(`inner-${id}`);
+      inner.classList.toggle("flipped");
+    }
+
+    function peekCard(id) {
+      const inner = document.getElementById(`inner-${id}`);
+      inner.classList.add("flipped");
+    }
+
+    function unpeekCard(id) {
+      const inner = document.getElementById(`inner-${id}`);
+      inner.classList.remove("flipped");
+    }
+
+    function saveCard(id) {
+  const front = document.getElementById(`front-${id}`).value.trim();
+  const back = document.getElementById(`back-${id}`).value.trim();
+
+  if (front && back) {
+    const card = flashcards.find(fc => fc.id === id);
+    if (card) {
+      card.front = front;
+      card.back = back;
+    }
+
+    document.getElementById(`peek-${id}`).style.display = 'inline-block';
+    document.getElementById(`save-front-${id}`)?.remove();
+    document.getElementById(`save-back-${id}`)?.remove();
+    document.getElementById(`delete-${id}`)?.remove();
+
+    // Show the "Card saved successfully!" message on both sides
+    const frontMsg = document.getElementById(`save-msg-${id}`);
+    const backMsg = document.getElementById(`save-msg-back-${id}`);
+    
+    // Remove 'hidden' class and show message
+    [frontMsg, backMsg].forEach(msg => {
+      if (msg) {
+        msg.classList.remove('hidden');
+        msg.classList.add('visible');
+        setTimeout(() => msg.classList.remove('visible'), 3000); // Hide after 3 seconds
+      }
+    });
+
+    // Play sound effect after saving
+    const saveSound = document.getElementById("save-sound");
+    saveSound.play();
+
+     MathJax.startup.promise.then(() => {
+    MathJax.typeset();
+    }).catch((err) => console.error("MathJax typeset failed: " + err.message));
+
+
+    saveAllToStorage();
+  } else {
+    alert("Both front and back must have content to save.");
+  }
+}
+
+
+
+    
+
+    function attachKeyboardShortcut(cardId) {
+      const frontTextarea = document.getElementById(`front-${cardId}`);
+      const backTextarea = document.getElementById(`back-${cardId}`);
+
+      const handler = (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+          saveCard(cardId);
+        }
+      };
+
+      frontTextarea.addEventListener('keydown', handler);
+      backTextarea.addEventListener('keydown', handler);
+    }
+
+    window.onload = () => {
+      flashcards.forEach(card => addFlashcard(true, card));
+    }
+    
+  </script>
+</body>
+</html>
