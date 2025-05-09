@@ -228,8 +228,9 @@ button {
         <textarea id="front-${cardId}" placeholder="Front content...">${frontVal}</textarea>
         <div class="save-message" id="save-msg-${cardId}">Card saved successfully!</div>
         <div class="actions" id="actions-front-${cardId}">
-          <button class="flip-btn" onclick="flipCard(${cardId})">Flip</button>
-          <button class="peek-btn" id="peek-${cardId}" style="display:${frontVal && backVal ? 'inline-block' : 'none'}" onmousedown="peekCard(${cardId})" onmouseup="unpeekCard(${cardId})" onmouseleave="unpeekCard(${cardId})">Peek</button>
+           <button class="peek-btn" id="peek-${cardId}" style="display:${frontVal && backVal ? 'inline-block' : 'none'}"
+          onmousedown="peekCard(${cardId})"onmouseup="unpeekCard(${cardId})"onmouseleave="unpeekCard(${cardId})"
+          ontouchstart="peekCard(${cardId})"ontouchend="unpeekCard(${cardId})">Peek</button>
           ${frontVal && backVal ? '' : `<button class="save-btn" id="save-front-${cardId}" onclick="saveCard(${cardId})">Save</button>`}
           ${frontVal && backVal ? '' : `<button class="delete-btn" id="delete-${cardId}" onclick="deleteFlashcard(${cardId})">Delete</button>`}
           <input type="checkbox" class="select-box" id="select-${cardId}"/>
